@@ -110,13 +110,13 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
 
     Param (
         [Parameter(ParameterSetName = 'Default', Position = 0, Mandatory)]
-        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly', Position = 1, Mandatory)]
         [string]$KB,
         [Parameter(ParameterSetName = 'ByGUID', Position = 0, Mandatory)]
-        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly', Position = 0, Mandatory)]
         [guid]$GUID,
         [Parameter(ParameterSetName = 'Default', Position = 1, Mandatory)]
-        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly', Position = 1, Mandatory)]
         [string]$SearchCriteria,
         [Parameter(ParameterSetName = 'Default')]
         [Parameter(ParameterSetName = 'ByKBLinksOnly')]
@@ -130,8 +130,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
         [Parameter(ParameterSetName = 'ByGUID')]
         [ValidateScript({Test-Path $_ -PathType 'Container'})]
         [string]$DestinationFolder = '.\',
-        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
-        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly', Mandatory)]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly', Mandatory)]
         [switch]$LinksOnly,
         [Parameter(ParameterSetName = 'Default')]
         [Parameter(ParameterSetName = 'ByGUID')]
