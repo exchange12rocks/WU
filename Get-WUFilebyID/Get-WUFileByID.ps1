@@ -39,6 +39,12 @@ GUID of an update set. The GUID uniquely identifies a set of files for a KB arti
 .PARAMETER SearchCriteria
 Product name (or a part of it). If an update has been released for several products (like different OSes), use the parameter to specify which product ot target.
 
+.PARAMETER SearchType
+You can choose in which column search for the value from "SearchCriteria" parameter: Product, Title or both (ProductAndTitle).
+
+.PARAMETER Platform
+You can choose for which platform do you need an update file.
+
 .PARAMETER DestinationFolder
 A folder where downloaded files will be saved.
 
@@ -57,11 +63,19 @@ A URL of a web page with a list of available files for an update set.
 
 .EXAMPLE
 # Download files for KB article #3172729 for Windows Server 2012 R2.
-Get-WUFileByID -KD 3172729 -SearchCriteria 'Windows Server 2012 R2'
+Get-WUFileByID -KB 3172729 -SearchCriteria 'Windows Server 2012 R2'
 
 .EXAMPLE
 # Download update files by a known update set GUID
 Get-WUFileByID -GUID 2c61a788-27e5-44f9-b27b-1ca22b4592d9
+
+.EXAMPLE
+#Download a full rollup October 2017 update for 64-bit version of Windows 10 (1703) using "Platform" parameter
+Get-WUFileByID -KB 4041676 -SearchCriteria 'Cumulative Update for Windows 10 Version 1703' -Platform x64
+
+.EXAMPLE
+#Get download links for a full October 2017 rollup update for 64-bit version of Windows 10 (1703) using "SearchCriteria" parameter
+Get-WUFileByID -KB 4041676 -SearchCriteria 'Cumulative Update for Windows 10 Version 1703 for x64' -LinksOnly
 
 .EXAMPLE
 # Download all updates required for a computer
@@ -75,7 +89,7 @@ $SearchResult = $Searcher.Search($Criteria).Updates
     $KBIDs += $matches[1]
 }
 foreach ($ID in $KBIDs) {
-    Get-WUFileByID -KD $ID -SearchCriteria 'Windows Server 2008 R2'
+    Get-WUFileByID -KB $ID -SearchCriteria 'Windows Server 2008 R2'
 }
 
 .NOTES
@@ -88,7 +102,7 @@ GitHub: https://github.com/exchange12rocks
 https://exchange12rocks.org/2017/10/02/function-to-download-updates-from-microsoft-catalog
 
 .LINK
-https://github.com/exchange12rocks/PS/tree/master/Get-WUFilebyID
+https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
 
 #>
 
@@ -96,25 +110,41 @@ https://github.com/exchange12rocks/PS/tree/master/Get-WUFilebyID
 
     Param (
         [Parameter(ParameterSetName = 'Default', Position = 0, Mandatory)]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
         [string]$KB,
         [Parameter(ParameterSetName = 'ByGUID', Position = 0, Mandatory)]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
         [guid]$GUID,
         [Parameter(ParameterSetName = 'Default', Position = 1, Mandatory)]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
         [string]$SearchCriteria,
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [ValidateSet('Product','Title','ProductAndTitle')]
+        [string]$SearchType = 'ProductAndTitle',
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [ValidateSet('x86','x64')]
+        [string]$Platform,
         [Parameter(ParameterSetName = 'Default')]
         [Parameter(ParameterSetName = 'ByGUID')]
         [ValidateScript({Test-Path $_ -PathType 'Container'})]
         [string]$DestinationFolder = '.\',
-        [Parameter(ParameterSetName = 'Default')]
-        [Parameter(ParameterSetName = 'ByGUID')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
         [switch]$LinksOnly,
         [Parameter(ParameterSetName = 'Default')]
         [Parameter(ParameterSetName = 'ByGUID')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
         [switch]$ForceSSL,
         [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
         [string]$SearchPageTemplate = 'https://www.catalog.update.microsoft.com/Search.aspx?q={0}',
         [Parameter(ParameterSetName = 'Default')]
         [Parameter(ParameterSetName = 'ByGUID')]
+        [Parameter(ParameterSetName = 'ByKBLinksOnly')]
+        [Parameter(ParameterSetName = 'ByGUIDLinksOnly')]
         [string]$DownloadPageTemplate = 'https://www.catalog.update.microsoft.com/DownloadDialog.aspx?updateIDs=%5B%7B%22size%22%3A0%2C%22languages%22%3A%22%22%2C%22uidInfo%22%3A%22{0}%22%2C%22updateID%22%3A%22{0}%22%7D%5D&updateIDsBlockedForImport=&wsusApiPresent=&contentImport=&sku=&serverName=&ssl=&portNumber=&version='
     )
 
@@ -122,7 +152,7 @@ https://github.com/exchange12rocks/PS/tree/master/Get-WUFilebyID
 
         $ErrorActionPreference = 'Stop'
 
-        if ($PSCmdlet.ParameterSetName -eq 'Default') {
+        if ($KB) {
             function FindTableColumnNumber {
                 Param (
                     [Parameter(Mandatory)]
@@ -282,7 +312,7 @@ https://github.com/exchange12rocks/PS/tree/master/Get-WUFilebyID
         }
     }
     PROCESS {
-        if ($PSCmdlet.ParameterSetName -eq 'Default') {
+        if ($KB) {
             $KBCatalogPage = Invoke-WebRequest -Uri ($SearchPageTemplate -f $KB)
             $Rows = $KBCatalogPage.ParsedHtml.getElementById('ctl00_catalogBody_updateMatches').getElementsByTagName('tr') # This line detects the main table which contains updates data.
             
@@ -321,10 +351,30 @@ https://github.com/exchange12rocks/PS/tree/master/Get-WUFilebyID
 
             $CandidateRows = @()
             foreach ($Row in $DataRows) { # There could be not one but several rows matching the pattern. We should process them all. $CandidateRows contains such rows.
-                if ($Row.getElementsByTagName('td')[$ProductColumnNumber].innerHTML -like ('*{0}*' -f $SearchCriteria)) {
-                    $CandidateRows += $Row
+                if ($SearchType -eq 'Product' -or $SearchType -eq 'ProductAndTitle') {
+                    if ($Row.getElementsByTagName('td')[$ProductColumnNumber].innerHTML -like ('*{0}*' -f $SearchCriteria)) {
+                        $CandidateRows += $Row
+                    }
+                }
+                if ($SearchType -eq 'Title' -or $SearchType -eq 'ProductAndTitle') {
+                    if ($Row.getElementsByTagName('td')[$TitleColumnNumber].innerHTML -like ('*{0}*' -f $SearchCriteria)) {
+                        $CandidateRows += $Row
+                    }  
                 }
             }
+
+            if ($CandidateRows) {
+                if ($Platform) {
+                    $CandidateRowsTemp = @()
+                    foreach ($Row in $CandidateRows) {
+                        if ($Row.getElementsByTagName('td')[$TitleColumnNumber].innerHTML -like ('*{0}*' -f $Platform)) {
+                            $CandidateRowsTemp += $Row
+                        }
+                    }
+                    $CandidateRows = $CandidateRowsTemp
+                }
+            }
+
             if (-not $CandidateRows) {
                 Write-Error -Message ('No candidate rows have been found for KB {0}' -f $KB)
             }
