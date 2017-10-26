@@ -62,6 +62,7 @@ Describe -Name 'Pester presence' -Fixture {
 }
 
 Describe -Name 'Full tests' -Fixture {
+    Push-Location -Path 'TestDrive:\'
     Context -Name 'Single file - by ID' -Fixture {
         $FunctionResult = &($FunctionName) -KB $SingleFileKBID -SearchCriteria $SearchCriteria
         
@@ -188,7 +189,7 @@ Describe -Name 'Full tests' -Fixture {
             Remove-Item -Path $Item -Force
         }
     }
-    
+    Pop-Location
 }
 
 Describe -Name 'Links only' -Fixture {
@@ -494,6 +495,7 @@ Describe -Name 'Links only - HTTPS' -Fixture {
 }
 
 Describe -Name 'Unit tests' -Fixture {
+    Push-Location -Path 'TestDrive:\'
     #$UnitFunctionName = 'FindTableColumnNumber'
     #. ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).beginBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
     #& ($UnitFunctionName) -Columns -Pattern
@@ -528,7 +530,7 @@ Describe -Name 'Unit tests' -Fixture {
             }
         }
 
-        <# Unfortunately, download.microsoft.com has an incorrect certificate installed, which renders HTTPS links useless.
+        <# Unfortunately, download.microsoft.com has an incorrect certificate installed at some nodes, which renders HTTPS testspop useless.
         Context ('{0} - SingleFile - HTTPS' -f $UnitFunctionName) -Fixture {
             $FunctionResult = & ($UnitFunctionName) -URL $HTTPSSingleString -DestinationFolder '.\' -FileName $SingleFileName
 
@@ -683,9 +685,11 @@ var eulaInfo =  new Array();
             $Result | Should -Be $TestResultSingle
         }
     }
+    Pop-Location
 }
 
 Describe -Name 'Errors' -Fixture {
+    Push-Location -Path 'TestDrive:\'
     Context -Name 'KB ID is incorrect' -Fixture {
         $Result = $false
         try {
@@ -732,6 +736,7 @@ Describe -Name 'Errors' -Fixture {
             $Result | Should -Be $false
         }
     }
+    Pop-Location
 }
 
 Describe -Name 'Comment-based help' -Fixture { # http://www.lazywinadmin.com/2016/05/using-pester-to-test-your-comment-based.html
