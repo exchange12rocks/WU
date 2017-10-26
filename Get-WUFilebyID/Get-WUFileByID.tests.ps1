@@ -685,6 +685,55 @@ var eulaInfo =  new Array();
     }
 }
 
+Describe -Name 'Errors' -Fixture {
+    Context -Name 'KB ID is incorrect' -Fixture {
+        $Result = $false
+        try {
+            & ($FunctionName) -KB '11111111' -SearchCriteria $SearchCriteria -ErrorAction 'Stop'
+            $Result = $true
+        }
+        catch {
+            It -name 'Error category is correct' -test {
+                $_.CategoryInfo.Category | Should -Be 'InvalidOperation'
+            }
+            It -name 'Exception fully qualified error id is correct' -test {
+                $_.Exception.ErrorRecord.FullyQualifiedErrorId | Should -Be 'InvokeMethodOnNull'
+            }
+            It -name 'Inner exception fully qualified error id is correct' -test {
+                $_.Exception.InnerException.ErrorRecord.FullyQualifiedErrorId | Should -Be 'InvokeMethodOnNull'
+            }
+        }
+        It -name 'The function should fail' -test {
+            $Result | Should -Be $false
+        }
+    }
+
+    Context -Name 'Catalog DNS name could not be resolved' -Fixture {
+        $Result = $false
+        try {
+            & ($FunctionName) -KB $SingleFileKBID -SearchCriteria $SearchCriteria -SearchPageTemplate 'https://www.atalog.update.microsoft.com/Search.aspx?q={0}' -ErrorAction 'Stop'
+            $Result = $true
+        }
+        catch {
+            It -name 'Error object target object URI property is correct' -test {
+                $_.TargetObject.RequestUri | Should -Be ('https://www.atalog.update.microsoft.com/Search.aspx?q={0}' -f $SingleFileKBID)
+            }
+            It -name 'Error object target object Host property is correct' -test {
+                $_.TargetObject.Host | Should -Be 'www.atalog.update.microsoft.com'
+            }
+            It -name 'Error object target object type is correct' -test {
+                $_.TargetObject | Should -BeOfType 'System.Net.HttpWebRequest'
+            }
+            It -name 'Error object inner exception status is correct' -test {
+                $_.Exception.InnerException.Status | Should -Be 'NameResolutionFailure'
+            }
+        }
+        It -name 'The function should fail' -test {
+            $Result | Should -Be $false
+        }
+    }
+}
+
 Describe -Name 'Comment-based help' -Fixture { # http://www.lazywinadmin.com/2016/05/using-pester-to-test-your-comment-based.html
     $Help = Get-Help -Name $FunctionName -Full
     $Notes = ($Help.alertSet.alert.text -split '\n')

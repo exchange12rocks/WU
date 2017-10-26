@@ -150,6 +150,26 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
 
     BEGIN {
 
+        function NewCustomErrorRecord {
+            Param (
+                [Parameter(Mandatory)]
+                [System.Management.Automation.ErrorRecord]$ErrorRecord,
+                [string]$Message
+            )
+
+            return @{
+                'Message' = $Message
+                'Category' = $ErrorRecord.CategoryInfo.Category
+                'ErrorId' = $ErrorRecord.FullyQualifiedErrorId
+                'TargetObject' = $ErrorRecord.TargetObject
+                'CategoryReason' = $ErrorRecord.CategoryInfo.Reason
+                'CategoryActivity' = $ErrorRecord.CategoryInfo.Activity
+                'CategoryTargetName' = $ErrorRecord.CategoryInfo.TargetName
+                'CategoryTargetType' = $ErrorRecord.CategoryInfo.TargetType
+                'Exception' = (New-Object -TypeName 'System.Management.Automation.RuntimeException' -ArgumentList ($Message, $ErrorRecord.Exception, $ErrorRecord.Exception.ErrorRecord))
+            }
+        }
+
         if ($KB) {
             function FindTableColumnNumber {
                 Param (
@@ -198,7 +218,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     Invoke-WebRequest -Uri $URL -OutFile $FullFileName
                 }
                 catch {
-                    Write-Error -Message ('Failed to download {0}' -f $URL) -Exception $_.Exception
+                    $Params = NewCustomErrorRecord -Message ('Failed to download {0}' -f $URL) -ErrorRecord $_
+                    Write-Error @Params
                     return
                 }
                 if (Test-Path -Path $FullFileName -PathType Leaf) {
@@ -277,7 +298,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                         $Result = RewriteURLtoHTTPS -URL $Result
                     }
                     catch {
-                        Write-Error -Message ('Failed invoking RewriteURLtoHTTPS for URL {0}' -f $URL) -Exception $_.Exception
+                        $Params = NewCustomErrorRecord -Message ('Failed invoking RewriteURLtoHTTPS for URL {0}' -f $URL) -ErrorRecord $_
+                        Write-Error @Params
                         return
                     }
                 }
@@ -302,7 +324,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     $Result = ParseKBDownloadLinksFromText -Text $KBDownloadScriptText -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
                 }
                 catch {
-                    Write-Error -Message ('Failed invoking ParseKBDownloadLinksFromText for KB {0} and GUID {1}' -f $KB, $GUID) -Exception $_.Exception
+                    $Params = NewCustomErrorRecord -Message ('Failed invoking ParseKBDownloadLinksFromText for KB {0} and GUID {1}' -f $KB, $GUID) -ErrorRecord $_
+                    Write-Error @Params
                     return
                 }
             }
@@ -329,14 +352,16 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     $KBCatalogDownloadPage = Invoke-WebRequest -Uri $URL
                 }
                 catch {
-                    Write-Error -Message ('Failed to download URL {0}' -f $URL) -Exception $_.Exception
+                    $Params = NewCustomErrorRecord -Message ('Failed to download URL {0}' -f $URL) -ErrorRecord $_
+                    Write-Error @Params
                     return
                 }
                 try {
                     $Result = ParseKBDownloadLinksFromHTML -HTMLObject $KBCatalogDownloadPage -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
                 }
                 catch {
-                    Write-Error -Message ('Failed invoking ParseKBDownloadLinksFromHTML for KB {0} and GUID {1}' -f $KB, $GUID) -Exception $_.Exception
+                    $Params = NewCustomErrorRecord -Message ('Failed invoking ParseKBDownloadLinksFromHTML for KB {0} and GUID {1}' -f $KB, $GUID) -ErrorRecord $_
+                    Write-Error @Params
                     return
                 }
             }
@@ -353,7 +378,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                 $KBCatalogPage = Invoke-WebRequest -Uri $URL
             }
             catch {
-                Write-Error -Message ('Failed to download URL {0} for KB {1}' -f $URL, $KB) -Exception $_.Exception
+                $Params = NewCustomErrorRecord -Message ('Failed to download URL {0} for KB {1}' -f $URL, $KB) -ErrorRecord $_
+                Write-Error @Params
                 return
             }
             if ($KBCatalogPage) {
@@ -361,7 +387,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     $Rows = $KBCatalogPage.ParsedHtml.getElementById('ctl00_catalogBody_updateMatches').getElementsByTagName('tr') # This line detects the main table which contains updates data.
                 }
                 catch {
-                    Write-Error -Message ('Unable to parse a download page for KB {0}' -f $KB) -Exception $_.Exception
+                    $Params = NewCustomErrorRecord -Message ('Unable to parse a download page for KB {0}' -f $KB) -ErrorRecord $_
+                    Write-Error @Params
                     return
                 }
             }
@@ -474,7 +501,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                 $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -KB $KB -ForceSSL:$ForceSSL
             }
             catch {
-                Write-Error -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0} and KB {1}' -f $GUID, $KB) -Exception $_.Exception
+                $Params = NewCustomErrorRecord -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0} and KB {1}' -f $GUID, $KB) -ErrorRecord $_
+                Write-Error @Params
                 return
             }
         }
@@ -483,7 +511,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                 $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -ForceSSL:$ForceSSL
             }
             catch {
-                Write-Error -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0}' -f $GUID) -Exception $_.Exception
+                $Params = NewCustomErrorRecord -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0}' -f $GUID) -ErrorRecord $_
+                Write-Error @Params
                 return
             }
         }
@@ -502,7 +531,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                                 $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -KB $KB
                             }
                             catch {
-                                Write-Error -Message ('Error invoking DownloadWUFile for URL {0} and KB {1}' -f $URL, $KB) -Exception $_.Exception
+                                $Params = NewCustomErrorRecord -Message ('Error invoking DownloadWUFile for URL {0} and KB {1}' -f $URL, $KB) -ErrorRecord $_
+                                Write-Error @Params
                                 return
                             }
                         }
@@ -511,7 +541,8 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                                 $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -GUID $GUID
                             }
                             catch {
-                                Write-Error -Message ('Error invoking DownloadWUFile for URL {0} and GUID {1}' -f $URL, $GUID) -Exception $_.Exception
+                                $Params = NewCustomErrorRecord -Message ('Error invoking DownloadWUFile for URL {0} and GUID {1}' -f $URL, $GUID) -ErrorRecord $_
+                                Write-Error @Params
                                 return
                             }
                         }
