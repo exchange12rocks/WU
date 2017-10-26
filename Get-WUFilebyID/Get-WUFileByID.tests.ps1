@@ -694,7 +694,7 @@ Describe -Name 'Errors' -Fixture {
         }
         catch {
             It -name 'Error category is correct' -test {
-                $_.CategoryInfo.Category | Should -Be 'InvalidOperation'
+                $_.CategoryInfo.Category | Should -Be ([System.Management.Automation.ErrorCategory]::InvalidOperation)
             }
             It -name 'Exception fully qualified error id is correct' -test {
                 $_.Exception.ErrorRecord.FullyQualifiedErrorId | Should -Be 'InvokeMethodOnNull'
@@ -725,7 +725,7 @@ Describe -Name 'Errors' -Fixture {
                 $_.TargetObject | Should -BeOfType 'System.Net.HttpWebRequest'
             }
             It -name 'Error object inner exception status is correct' -test {
-                $_.Exception.InnerException.Status | Should -Be 'NameResolutionFailure'
+                $_.Exception.InnerException.Status | Should -Be ([System.Net.WebExceptionStatus]::NameResolutionFailure)
             }
         }
         It -name 'The function should fail' -test {
