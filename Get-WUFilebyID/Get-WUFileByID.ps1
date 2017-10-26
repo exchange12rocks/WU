@@ -150,8 +150,6 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
 
     BEGIN {
 
-        $ErrorActionPreference = 'Stop'
-
         if ($KB) {
             function FindTableColumnNumber {
                 Param (
@@ -196,17 +194,26 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             }
             PROCESS {
                 $FullFileName = Join-Path -Path $DestinationFolder -ChildPath $FileName
-                Invoke-WebRequest -Uri $URL -OutFile $FullFileName
+                try {
+                    Invoke-WebRequest -Uri $URL -OutFile $FullFileName
+                }
+                catch {
+                    Write-Error -Message ('Failed to download {0}' -f $URL) -Exception $_.Exception
+                    return
+                }
                 if (Test-Path -Path $FullFileName -PathType Leaf) {
                     $Result += (Get-Item -Path $FullFileName)
                 }
                 else {
                     if ($GUID) {
                         Write-Error -Message ('Could not write a file for GUID {0} to a location {1}' -f $GUID, $FullFileName)
+                        return
                     }
                     else {
                         Write-Error -Message ('Could not write a file for KB {0} to a location {1}' -f $KB, $FullFileName)
+                        return
                     }
+                    exit
                 }
             }
             END {
@@ -255,16 +262,24 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     else {
                         if ($KB) {
                             Write-Error -Message ('Could not extract a download link from the element {0} for KB {1}' -f $Item, $KB)
+                            return
                         }
                         else {
                             Write-Error -Message ('Could not extract a download link from the element {0} for GUID {1}' -f $Item, $GUID)
+                            return
                         }
                     }
                 }
             }
             END {
                 if ($ForceSSL) {
-                    $Result = RewriteURLtoHTTPS -URL $Result
+                    try {
+                        $Result = RewriteURLtoHTTPS -URL $Result
+                    }
+                    catch {
+                        Write-Error -Message ('Failed invoking RewriteURLtoHTTPS for URL {0}' -f $URL) -Exception $_.Exception
+                        return
+                    }
                 }
                 return $Result
             }
@@ -283,7 +298,13 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             PROCESS {
                 $KBCatalogDownloadPageScripts = $HTMLObject.ParsedHtml.getElementsByTagName('script') # The actual update links are in a JavaScript array, grabbing all the scripts from the page. 
                 $KBDownloadScriptText = ($KBCatalogDownloadPageScripts | Where-Object -FilterScript {$_.innerHTML -Like '*var downloadInformation = new Array();*'}).innerHTML # Then we finding the one containing the download links.
-                $Result = ParseKBDownloadLinksFromText -Text $KBDownloadScriptText -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
+                try {
+                    $Result = ParseKBDownloadLinksFromText -Text $KBDownloadScriptText -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
+                }
+                catch {
+                    Write-Error -Message ('Failed invoking ParseKBDownloadLinksFromText for KB {0} and GUID {1}' -f $KB, $GUID) -Exception $_.Exception
+                    return
+                }
             }
             END {
                 return $Result
@@ -301,10 +322,23 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             )
 
             BEGIN {
+                $URL = $DownloadPageTemplate -f $GUID
             }
             PROCESS {
-                $KBCatalogDownloadPage = Invoke-WebRequest -Uri ($DownloadPageTemplate -f $GUID)
-                $Result = ParseKBDownloadLinksFromHTML -HTMLObject $KBCatalogDownloadPage -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
+                try {
+                    $KBCatalogDownloadPage = Invoke-WebRequest -Uri $URL
+                }
+                catch {
+                    Write-Error -Message ('Failed to download URL {0}' -f $URL) -Exception $_.Exception
+                    return
+                }
+                try {
+                    $Result = ParseKBDownloadLinksFromHTML -HTMLObject $KBCatalogDownloadPage -KB $KB -GUID $GUID -ForceSSL:$ForceSSL
+                }
+                catch {
+                    Write-Error -Message ('Failed invoking ParseKBDownloadLinksFromHTML for KB {0} and GUID {1}' -f $KB, $GUID) -Exception $_.Exception
+                    return
+                }
             }
             END {
                 return $Result
@@ -313,9 +347,33 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
     }
     PROCESS {
         if ($KB) {
-            $KBCatalogPage = Invoke-WebRequest -Uri ($SearchPageTemplate -f $KB)
-            $Rows = $KBCatalogPage.ParsedHtml.getElementById('ctl00_catalogBody_updateMatches').getElementsByTagName('tr') # This line detects the main table which contains updates data.
-            
+            Write-Verbose -Message ('Downloading KB{0}' -f $KB)
+            $URL = $SearchPageTemplate -f $KB
+            try {
+                $KBCatalogPage = Invoke-WebRequest -Uri $URL
+            }
+            catch {
+                Write-Error -Message ('Failed to download URL {0} for KB {1}' -f $URL, $KB) -Exception $_.Exception
+                return
+            }
+            if ($KBCatalogPage) {
+                try {
+                    $Rows = $KBCatalogPage.ParsedHtml.getElementById('ctl00_catalogBody_updateMatches').getElementsByTagName('tr') # This line detects the main table which contains updates data.
+                }
+                catch {
+                    Write-Error -Message ('Unable to parse a download page for KB {0}' -f $KB) -Exception $_.Exception
+                    return
+                }
+            }
+            else {
+                Write-Error -Message ('Failed to download a download page for KB {0}' -f $KB)
+                return
+            }
+            if (-not $Rows) {
+                Write-Error -Message ('No rows have been returned from a download page for KB {0}' -f $KB)
+                return
+            }
+
             $HeaderRow = $null
             foreach ($Row in $Rows) {
                 if ($Row.id -eq 'headerRow') {
@@ -324,6 +382,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                     }
                     else {
                         Write-Error -Message ('Multiple header rows returned for KB {0}' -f $KB)
+                        return
                     }
                 }
             }
@@ -333,12 +392,18 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             }
             else {
                 Write-Error -Message ('Could not find a header row for KB {0}' -f $KB)
+                return
             }
 
-            $DateColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Last Updated</SPAN>*' # Finding a column where the update release date is stored.
-            $ProductColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Products</SPAN>*' # Finding a column where the product name is stored.
-            $TitleColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Title</SPAN>*' # Finding a column where update title and ID are stored.
-
+            try {
+                $DateColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Last Updated</SPAN>*' # Finding a column where the update release date is stored.
+                $ProductColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Products</SPAN>*' # Finding a column where the product name is stored.
+                $TitleColumnNumber = FindTableColumnNumber -Columns $Columns -Pattern '*<SPAN>Title</SPAN>*' # Finding a column where update title and ID are stored.
+            }
+            catch {
+                Write-Error -Message ('Failed invoking FindTableColumnNumber for KB {0}' -f $KB) -Exception $_.Exception
+                return
+            }
             $DataRows = @()
             foreach ($Row in $Rows) {
                 if ($Row.id -ne 'headerRow') {
@@ -347,6 +412,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             }
             if (-not $DataRows) {
                 Write-Error -Message ('No data rows have been found for KB {0}' -f $KB)
+                return
             }
 
             $CandidateRows = @()
@@ -377,6 +443,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
 
             if (-not $CandidateRows) {
                 Write-Error -Message ('No candidate rows have been found for KB {0}' -f $KB)
+                return
             }
 
             $RowNumber = 0
@@ -393,6 +460,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             }
             else {
                 Write-Error -Message ('Could not find a GUID for KB {0}' -f $KB)
+                return
             }
         }
 
@@ -400,11 +468,24 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
             [string]$GUID = $Guid.Guid
         }
 
+        Write-Verbose -Message ('Downloading GUID {0}' -f $GUID)
         if ($PSCmdlet.ParameterSetName -eq 'Default') {
-            $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -KB $KB -ForceSSL:$ForceSSL
+            try {
+                $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -KB $KB -ForceSSL:$ForceSSL
+            }
+            catch {
+                Write-Error -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0} and KB {1}' -f $GUID, $KB) -Exception $_.Exception
+                return
+            }
         }
         else {
-            $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -ForceSSL:$ForceSSL
+            try {
+                $DownloadLinks = GetKBDownloadLinksByGUID -DownloadPageTemplate $DownloadPageTemplate -GUID $GUID -ForceSSL:$ForceSSL
+            }
+            catch {
+                Write-Error -Message ('Error invoking GetKBDownloadLinksByGUID for GUID {0}' -f $GUID) -Exception $_.Exception
+                return
+            }
         }
         
         if ($DownloadLinks) {
@@ -415,19 +496,34 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
                 $Result = @()
                 foreach ($URL in $DownloadLinks) { 
                     if ($URL -match '.+/(.+)$') {
+                        Write-Verbose -Message ('Downloading file {0}' -f $URL)
                         if ($PSCmdlet.ParameterSetName -eq 'Default') {
-                            $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -KB $KB
+                            try {
+                                $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -KB $KB
+                            }
+                            catch {
+                                Write-Error -Message ('Error invoking DownloadWUFile for URL {0} and KB {1}' -f $URL, $KB) -Exception $_.Exception
+                                return
+                            }
                         }
                         else {
-                            $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -GUID $GUID
+                            try {
+                                $Result += DownloadWUFile -URL $URL -DestinationFolder $DestinationFolder -FileName $Matches[1] -GUID $GUID
+                            }
+                            catch {
+                                Write-Error -Message ('Error invoking DownloadWUFile for URL {0} and GUID {1}' -f $URL, $GUID) -Exception $_.Exception
+                                return
+                            }
                         }
                     }
                     else {
                         if ($PSCmdlet.ParameterSetName -eq 'Default') {
                             Write-Error -Message ('URL {0} for KB {1} does not match the scheme' -f $URL, $KB)
+                            return
                         }
                         else {
                             Write-Error -Message ('URL {0} for GUID {1} does not match the scheme' -f $URL, $GUID)
+                            return
                         }
                     }
                 }
@@ -436,9 +532,11 @@ https://github.com/exchange12rocks/WU/tree/master/Get-WUFilebyID
         else {
             if ($PSCmdlet.ParameterSetName -eq 'Default') {
                 Write-Error -Message ('No download links for KB {0} have been generated' -f $KB)
+                return
             }
             else {
                 Write-Error -Message ('No download links for GUID {0} have been generated' -f $GUID)
+                return
             }
         }
     }
