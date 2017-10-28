@@ -53,7 +53,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
 
     Param (
         [Parameter(Mandatory)]
-        [ValidateSet('2008R2','2012','2012R2','2016','10-1703')]
+        [ValidateSet('2008R2','2012','2012R2','2016','1703','1709')]
         [string]$OS
     )
 
@@ -82,11 +82,17 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
             ParseDate = $false
             DisplayNameFilter = 'Windows 10 Version 1607 and Windows Server 2016'
         }
-        '10-1703' = @{
+        '1703' = @{
             KB = '4018124'
             RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+\)'
             ParseDate = $false
             DisplayNameFilter = 'Windows 10 Version 1703'
+        }
+        '1709' = @{
+            KB = '4043454'
+            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+\)'
+            ParseDate = $false
+            DisplayNameFilter = 'Windows 10 Version 1709'
         }
     }
 
