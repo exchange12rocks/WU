@@ -54,7 +54,9 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
     Param (
         [Parameter(Mandatory)]
         [ValidateSet('2008R2','2012','2012R2','2016','1703','1709')]
-        [string]$OS
+        [string]$OS,
+        [ValidateSet('All','RollupsOnly','NonRollupsOnly')]
+        [string]$Mode = 'All'
     )
 
     $ErrorActionPreference = 'Stop'
@@ -64,16 +66,19 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
         '2008R2' = @{
             KB = '4009469'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2012' = @{
             KB = '4009471'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2012R2' = @{
             KB = '4009470'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2016' = @{
@@ -99,10 +104,29 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
     $ToSort = @()
     $UpdatesList = ((Invoke-WebRequest -Uri ($SupportKBUriTemplate -f (((Invoke-WebRequest -Uri ($SupportKBUriTemplate -f $OSDefs.$OS.KB) -UseBasicParsing).Content | ConvertFrom-Json).sideNav)) -UseBasicParsing).Content | ConvertFrom-Json).links
     if ($OSDefs.$OS.ParseDate) {
-        $RegEx = '(?<Year>\d{4})\-(?<Month>\d{2}).+'
-
+        $FilteredUpdatesList = @()
         foreach ($Item in $UpdatesList) {
-            if ($Item -match $RegEx) {
+            switch ($Mode) {
+                'RollupsOnly' {
+                    if ($Item.text -match $OSDefs.$OS.RegEx) {
+                        $FilteredUpdatesList += $Item
+                    }
+                }
+                'NonRollupsOnly' {
+                    if ($Item.text -notmatch $OSDefs.$OS.RegEx) {
+                        $FilteredUpdatesList += $Item
+                    }
+                }
+            }
+        }
+
+        if ($FilteredUpdatesList.Count -eq 0) {
+            $FilteredUpdatesList = $UpdatesList
+        }
+
+        $DateRegEx = '(?<Year>\d{4})\-(?<Month>\d{2}).+'
+        foreach ($Item in $FilteredUpdatesList) {
+            if ($Item.text -match $DateRegEx) {
                 $ToSort += [pscustomobject]@{
                     ID = $Item.ID
                     Year = $Matches.Year
@@ -130,7 +154,7 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
                         if ($TextOfInterest) {
                             $Result = @()
                             foreach ($Item in $TextOfInterest) {
-                                if ($Item -match $OSDefs.$OS.RegEx) {
+                                if ($Item -match $OSDefs.$OS.KBRegEx) {
                                     $Result += $Matches.KB
                                 }
                             }
