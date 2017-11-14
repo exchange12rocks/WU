@@ -66,36 +66,39 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
         '2008R2' = @{
             KB = '4009469'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            PreviewRegEx = '\d{4}\-\d{2}\sPreview\sof\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
             KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2012' = @{
             KB = '4009471'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            PreviewRegEx = '\d{4}\-\d{2}\sPreview\sof\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
             KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2012R2' = @{
             KB = '4009470'
             RegEx = '\d{4}\-\d{2}\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
+            PreviewRegEx = '\d{4}\-\d{2}\sPreview\sof\sMonthly\sRollup\s\-\sKB(?<KB>\d+)'
             KBRegEx = '\d{4}\-\d{2}.*\sKB(?<KB>\d+)'
             ParseDate = $true
         }
         '2016' = @{
             KB = '4000825'
-            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+\)'
+            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+[\s\S]*\)'
             ParseDate = $false
             DisplayNameFilter = 'Windows 10 Version 1607 and Windows Server 2016'
         }
         '1703' = @{
             KB = '4018124'
-            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+\)'
+            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+[\s\S]*\)'
             ParseDate = $false
             DisplayNameFilter = 'Windows 10 Version 1703'
         }
         '1709' = @{
             KB = '4043454'
-            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+\)'
+            RegEx = 'KB(?<KB>\d+)\s\(OS\sBuild\s\d+\.\d+[\s\S]*\)'
             ParseDate = $false
             DisplayNameFilter = 'Windows 10 Version 1709'
         }
@@ -121,7 +124,11 @@ https://github.com/exchange12rocks/WU/tree/master/Get-LatestWindowsRollup
         }
 
         if ($FilteredUpdatesList.Count -eq 0) {
-            $FilteredUpdatesList = $UpdatesList
+            foreach ($Item in $UpdatesList) {
+                if ($Item.text -notmatch $OSDefs.$OS.PreviewRegEx) {
+                    $FilteredUpdatesList += $Item
+                }
+            }
         }
 
         $DateRegEx = '(?<Year>\d{4})\-(?<Month>\d{2}).+'
