@@ -2,7 +2,7 @@
 #Requires -Modules Pester
 
 $FunctionName = ($MyInvocation.MyCommand.Name).Substring(0, ($MyInvocation.MyCommand.Name).Length - 10)
-. (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path) -ChildPath "$FunctionName.ps1")
+. (Join-Path -Path (Split-Path -Path $MyInvocation.MyCommand.Path) -ChildPath ('{0}.ps1' -f $FunctionName))
 
 $SingleFileKBID = '4038793'
 $SingleFileGUID = '9516efa8-6493-43de-979c-ebf2aa89aa69'
@@ -506,7 +506,7 @@ Describe -Name 'Unit tests' -Fixture {
 
     Context -Name 'DownloadWUFile' -Fixture {
         $UnitFunctionName = 'DownloadWUFile'
-        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).beginBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
+        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).EndBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
 
         Context ('{0} - Single file - HTTP' -f $UnitFunctionName) -Fixture {
             $FunctionResult = & ($UnitFunctionName) -URL $HTTPSingleString -DestinationFolder '.\' -FileName $SingleFileName
@@ -582,7 +582,7 @@ Describe -Name 'Unit tests' -Fixture {
 
     Context -Name 'RewriteURLtoHTTPS' -Fixture {
         $UnitFunctionName = 'RewriteURLtoHTTPS'
-        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).beginBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
+        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).EndBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
 
         It -name ('{0} - HTTPMultiple' -f $UnitFunctionName) -test {
             & ($UnitFunctionName) -URL $HTTPMultiple | Should -Be $HTTPSMultiple
@@ -606,7 +606,7 @@ Describe -Name 'Unit tests' -Fixture {
 
     Context -Name 'ParseKBDownloadLinksFromText' -Fixture {
         $UnitFunctionName = 'ParseKBDownloadLinksFromText'
-        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).beginBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
+        . ([scriptblock]::Create((([System.Management.Automation.Language.Parser]::ParseInput((Get-Content function:$FunctionName), [ref]$null, [ref]$null)).EndBlock.FindAll( {$args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst]}, $true) | Where-Object -FilterScript {$_.Name -eq $UnitFunctionName}).Extent.Text))
         
         It -name ('{0} - Multiple' -f $UnitFunctionName) -test {
             $TextMultiple = @"
