@@ -2,6 +2,8 @@ install:
   - ps: $Module = Get-Module -Name 'Pester' -ListAvailable
   - ps: "[version]$RequiredPesterVersion = '4.0.8'"
   - ps: if ($Module) { if (-not ($Module | Where-Object -FilterScript {$_.Version -ge $RequiredPesterVersion})) { Install-Module -Name 'Pester' -MinimumVersion $RequiredPesterVersion -SkipPublisherCheck -Force }; Import-Module -Name 'Pester' -MinimumVersion $RequiredPesterVersion; Get-Module -Name 'Pester' | Where-Object -FilterScript {$_.Version -lt $RequiredPesterVersion} | Remove-Module -Force } else { Install-Module -Name 'Pester' -MinimumVersion $RequiredPesterVersion; Import-Module -Name 'Pester' }
+  - ps: $PSVersionTable
+
 
 build: false
 
