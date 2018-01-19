@@ -148,7 +148,7 @@ function Get-WUFileByID {
         [string]$DownloadPageTemplate = 'https://www.catalog.update.microsoft.com/DownloadDialog.aspx?updateIDs=%5B%7B%22size%22%3A0%2C%22languages%22%3A%22%22%2C%22uidInfo%22%3A%22{0}%22%2C%22updateID%22%3A%22{0}%22%7D%5D&updateIDsBlockedForImport=&wsusApiPresent=&contentImport=&sku=&serverName=&ssl=&portNumber=&version='
     )
 
-    if($PSVersionTable.PSEdition -ne 'Desktop')
+    if($PSVersionTable.PSEdition -eq 'Core')
     {
         throw 'The script uses Internet Explorer engine and, therefore, requires the Desktop edition of PowerShell'
     } 
