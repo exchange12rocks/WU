@@ -5,7 +5,7 @@ install:
   - ps: $PSVersionTable
 
 
-build: false
+build: off
 
 test_script:
   - ps: $res = Invoke-Pester -OutputFormat NUnitXml -OutputFile TestsResults.xml -PassThru
