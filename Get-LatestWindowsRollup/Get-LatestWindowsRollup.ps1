@@ -67,6 +67,7 @@ function Get-LatestWindowsRollup {
         $SupportKBUriTemplate = 'https://support.microsoft.com/app/content/api/content/help/en-us/{0}'
         $PreviewRollupRegEx = ('[A-Za-z]+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(Preview of Monthly Rollup\)' -f [char](8212)) # Somehow PS5.1 cannot process the "—" character in strings correctly.
         $SecurityOnlyRegEx = ('[A-Za-z]+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(Security-only update\)' -f [char](8212))
+        $PreviewRegEx = ('\w+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(\w{{2}} \w{{5}} \d+\.\d+\) Preview$' -f [char](8212))
         $OSDefs = @{
             '2012'   = @{
                 KB                    = '4009471'
@@ -96,6 +97,7 @@ function Get-LatestWindowsRollup {
             }
             '2019'   = @{
                 KB = '4464619'
+                SeveralTypesAvailable = $true
             }
         }
 
@@ -130,7 +132,7 @@ function Get-LatestWindowsRollup {
                                     $SecurityOnlyID = $UpdateRecordProcessed.ID
                                 }
                             }
-                            elseif ($UpdateRecordProcessed.Title -match $PreviewRollupRegEx) {
+                            elseif ($UpdateRecordProcessed.Title -match $PreviewRollupRegEx -or $UpdateRecordProcessed.Title -match $PreviewRegEx) {
                                 if (-not $RollupPreviewID) {
                                     $RollupPreviewID = $UpdateRecordProcessed.ID
                                 }
@@ -152,7 +154,7 @@ function Get-LatestWindowsRollup {
                     }
                     Default {
                         foreach ($UpdateRecordProcessed in $UpdateListProcessedSorted) {
-                            if ($UpdateRecordProcessed.Title -notmatch $PreviewRollupRegEx -and $UpdateRecordProcessed.Title -notmatch $SecurityOnlyRegEx) {
+                            if ($UpdateRecordProcessed.Title -notmatch $PreviewRollupRegEx -and $UpdateRecordProcessed.Title -notmatch $SecurityOnlyRegEx -and $UpdateRecordProcessed.Title -notmatch $PreviewRegEx) {
                                 $UpdateRecordProcessed.ID
                                 break
                             }
