@@ -67,7 +67,7 @@ function Get-LatestWindowsRollup {
         $SupportKBUriTemplate = 'https://support.microsoft.com/app/content/api/content/help/en-us/{0}'
         $PreviewRollupRegEx = ('[A-Za-z]+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(Preview of Monthly Rollup\)' -f [char](8212)) # Somehow PS5.1 cannot process the "—" character in strings correctly.
         $SecurityOnlyRegEx = ('[A-Za-z]+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(Security-only update\)' -f [char](8212))
-        $PreviewRegEx = ('\w+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(\w{{2}} \w{{5}} \d+\.\d+\) Preview$' -f [char](8212))
+        $PreviewRegEx = ('[A-Za-z]+ \d{{1,2}}, \d{{4}}[{0}-]KB\d+ \(\[A-Za-z]{{2}} \[A-Za-z]{{5}} \d+\.\d+\) Preview$' -f [char](8212))
         $OSDefs = @{
             '2012'   = @{
                 KB                    = '4009471'
